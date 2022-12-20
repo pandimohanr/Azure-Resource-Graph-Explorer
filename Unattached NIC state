@@ -3,9 +3,3 @@ Resources
 | where "{nicWithPrivateEndpoints}" !has id 
 | where properties !has 'virtualmachine' 
 | project id, resourceGroup, location, subscriptionId
-| where properties['TrackingId'] == "INSERT_VALUE_HERE"
-| advisorresources
-| chaosresources
-| extendedlocationresources
-| workloadmonitorresources
-| where type == "microsoft.workloadmonitor/monitors"
