@@ -1,0 +1,12 @@
+Resources
+| where type == 'microsoft.network/virtualnetworks'
+| join kind=inner (    
+	resourcecontainers    
+	| where type == 'microsoft.resources/subscriptions'    
+	| project subscriptionId, subscriptionName = name)    
+	on subscriptionId
+| extend subnets=properties.subnets
+| mv-expand subnets
+| where isnull(subnets.properties.networkSecurityGroup)
+| project subscriptionId,resourceGroup,name,location,subnets.name,subnets.properties.networkSecurityGroup
+| sort by subscriptionId,resourceGroup,name,location
