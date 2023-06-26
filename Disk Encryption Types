@@ -1,0 +1,11 @@
+resources
+| where type == "microsoft.compute/disks"
+| extend encryptionType = properties.encryption.type
+| extend encryptionSetId = properties.encryption.disEncryptionSetId
+| project name, resourceGroup, subscriptionId, encryptionType, encryptionSetId
+
+resources
+| where type == "microsoft.compute/disks"
+| extend encryptionType = properties.encryption.type
+| extend encryptionSetId = properties.encryption.diskEncryptionSetId
+| project name, resourceGroup, subscriptionId, encryptionType, encryptionSetId
