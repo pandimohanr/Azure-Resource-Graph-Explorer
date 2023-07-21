@@ -1,0 +1,3 @@
+Resources
+| where type == "microsoft.compute/disks"
+| project diskName=name, diskSizeGB=properties.diskSizeGB, diskSKU=sku.name, encryptionType=properties.encryption.type, diskState=properties.diskState
