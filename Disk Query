@@ -1,0 +1,172 @@
+// Run query to see results.
+resources
+| where type =~ 'microsoft.compute/disks'
+| extend skuName=tostring(sku.name)
+| extend accountType=case(skuName =~ 'Standard_LRS', 'Standard HDD LRS',
+                          skuName =~ 'StandardSSD_LRS', 'Standard SSD LRS',
+                          skuName =~ 'UltraSSD_LRS', 'Ultra disk LRS',
+                          skuName =~ 'Premium_LRS', 'Premium SSD LRS',
+                          skuName =~ 'Standard_ZRS', 'Zone-redundant',
+                          skuName =~ 'Premium_ZRS', 'Premium SSD ZRS',
+                          skuName =~ 'StandardSSD_ZRS', 'Standard SSD ZRS',
+                          skuName)
+| extend securityTypeString=tostring(properties.securityProfile.securityType)
+| extend securityType=case(securityTypeString =~ 'Standard', 'Standard',
+                          securityTypeString =~ 'TrustedLaunch', 'Trusted launch',
+                          securityTypeString startswith 'ConfidentialVm', 'Confidential',
+                          'Standard')
+| extend architecture=iff(tostring(properties.supportedCapabilities.architecture) =~ 'Arm64', 'Arm64', 'x64')
+| extend timeCreated=tostring(properties.timeCreated)
+| extend sizeProperty=tostring(properties.diskSizeGB)
+| extend size=iff(isempty(sizeProperty), '-', sizeProperty)
+| extend iops=strcat(tostring(properties.diskIOPSReadWrite), '/', tostring(properties.diskMBpsReadWrite))
+| extend owner=coalesce(split(managedBy, '/')[(-1)], '-')
+| extend diskStateProperty=tostring(properties.diskState)
+| extend diskState=case(diskStateProperty =~ 'Attached', 'Attached',
+                        diskStateProperty =~ 'Unattached', 'Unattached',
+                        diskStateProperty =~ 'Reserved', 'Reserved',
+                        coalesce(diskStateProperty, '-'))
+| extend osType=coalesce(properties.osType, '-')
+| extend provisioningState=coalesce(properties.provisioningState, '-')
+| extend sourceId=tostring(coalesce(properties.creationData.imageReference.id, properties.creationData.sourceUri, properties.creationData.sourceResourceId))
+| parse kind=regex sourceId with '/Publishers/' publisher '/ArtifactTypes/(.*)/Offers/' offer '/Skus/' sku '/Versions/' version
+| extend createOption=tostring(properties.creationData.createOption)
+| extend source=case(createOption =~ 'empty', '-',
+                     createOption =~ 'copy', split(sourceId, '/')[(-1)],
+                     createOption =~ 'import', sourceId,
+                     createOption =~ 'fromImage', strcat(publisher, ' / ', offer, ' / ', sku, ' / ', version),
+                     '-')
+| extend sharedDisk = tostring(coalesce(properties.maxShares, 0))
+| project 
+    name, 
+    id, 
+    subscriptionId, 
+    resourceGroup, 
+    location, 
+    edgeZone = iff(tostring(extendedLocation.type) =~ 'EdgeZone', tostring(extendedLocation.name), '-'),
+    type, 
+    kind, 
+    tags, 
+    tenantId, 
+    accountType, 
+    diskState, 
+    timeCreated, 
+    size, 
+    iops, 
+    owner, 
+    osType, 
+    provisioningState, 
+    source, 
+    sharedDisk,
+    architecture,
+    securityType
+| extend subscriptionDisplayName=case(subscriptionId =~ '59b2cd00-9406-4a41-a772-e073dbe19796','CVS-SECUREHUB000',subscriptionId =~ '29ea5d6f-8539-4a95-8198-ca801994cbdb','CVS-SECUREHUB001',subscriptionId =~ '92d042f0-1e08-4e74-9a93-725de6d17889','Insurance Non-Production',subscriptionId =~ 'b799765a-02af-4d12-a6ee-4ac23faeec8f','Insurance Production',subscriptionId =~ 'a1869ab6-2424-487a-9bb0-f95d2931c479','PBM ACN Non-Production',subscriptionId =~ '8930831d-15da-47e9-a3c8-5a31fa2e5d6f','PBM ACN PCI Production',subscriptionId =~ '46b2c03d-2ec2-4085-bbbf-29456c1d677d','PBM ACN Production',subscriptionId =~ 'd83db705-48de-4f27-8bf2-f268e8d9a5c7','PE Sandbox',subscriptionId =~ 'ec909cb4-3561-470e-aea1-d714d982a7a9','Retail ACN Non-Production',subscriptionId =~ '6b22d67a-63f0-48a1-a93e-656516771e1e','Retail ACN Production',subscriptionId =~ '4773fae8-e765-4348-bda1-c5ce1f419286','Service Management Non-Production',subscriptionId =~ '7f81ff32-74f5-45e3-bc03-a8141f72754d','Service Management Production',subscriptionId =~ '3cfb1c07-6236-414b-8f46-427eff7b650c','SUB-CORP-ACN-NONPROD',subscriptionId =~ 'a9ee1046-e568-4cab-8408-7b515a2bf59b','SUB-CORP-ACN-PROD',subscriptionId =~ 'b6aa23cd-a2a8-4c42-9e8c-56309606457a','SUB-CORP-Sandbox',subscriptionId =~ '528a7f6a-9442-4f03-84d0-5dce4d4faf40','SUB-CORP-Sandbox-Test',subscriptionId =~ '087a4f60-a7ac-49c5-9be5-6ac0ffd7d4b1','SUB-CORP-WIZARD',subscriptionId =~ '6c42525c-8158-4796-ad41-d67fbfae1239','SUB-HCB-ACN-NONPROD',subscriptionId =~ '2fc270fd-9395-4bf2-b045-80a117449581','SUB-HCB-ACN-PROD',subscriptionId =~ 'e7ec5291-91eb-484f-bb26-6b22f5feec65','SUB-HCB-WAS',subscriptionId)
+| extend locationDisplayName=case(location =~ 'eastus','East US',location =~ 'eastus2','East US 2',location =~ 'southcentralus','South Central US',location =~ 'westus2','West US 2',location =~ 'westus3','West US 3',location =~ 'australiaeast','Australia East',location =~ 'southeastasia','Southeast Asia',location =~ 'northeurope','North Europe',location =~ 'swedencentral','Sweden Central',location =~ 'uksouth','UK South',location =~ 'westeurope','West Europe',location =~ 'centralus','Central US',location =~ 'southafricanorth','South Africa North',location =~ 'centralindia','Central India',location =~ 'eastasia','East Asia',location =~ 'japaneast','Japan East',location =~ 'koreacentral','Korea Central',location =~ 'canadacentral','Canada Central',location =~ 'francecentral','France Central',location =~ 'germanywestcentral','Germany West Central',location =~ 'norwayeast','Norway East',location =~ 'polandcentral','Poland Central',location =~ 'switzerlandnorth','Switzerland North',location =~ 'uaenorth','UAE North',location =~ 'brazilsouth','Brazil South',location =~ 'qatarcentral','Qatar Central',location =~ 'centralusstage','Central US (Stage)',location =~ 'eastusstage','East US (Stage)',location =~ 'eastus2stage','East US 2 (Stage)',location =~ 'northcentralusstage','North Central US (Stage)',location =~ 'southcentralusstage','South Central US (Stage)',location =~ 'westusstage','West US (Stage)',location =~ 'westus2stage','West US 2 (Stage)',location =~ 'asia','Asia',location =~ 'asiapacific','Asia Pacific',location =~ 'australia','Australia',location =~ 'brazil','Brazil',location =~ 'canada','Canada',location =~ 'europe','Europe',location =~ 'france','France',location =~ 'germany','Germany',location =~ 'global','Global',location =~ 'india','India',location =~ 'japan','Japan',location =~ 'korea','Korea',location =~ 'norway','Norway',location =~ 'singapore','Singapore',location =~ 'southafrica','South Africa',location =~ 'switzerland','Switzerland',location =~ 'uae','United Arab Emirates',location =~ 'uk','United Kingdom',location =~ 'unitedstates','United States',location =~ 'unitedstateseuap','United States EUAP',location =~ 'eastasiastage','East Asia (Stage)',location =~ 'southeastasiastage','Southeast Asia (Stage)',location =~ 'brazilus','Brazil US',location =~ 'northcentralus','North Central US',location =~ 'westus','West US',location =~ 'jioindiawest','Jio India West',location =~ 'westcentralus','West Central US',location =~ 'southafricawest','South Africa West',location =~ 'australiacentral','Australia Central',location =~ 'australiacentral2','Australia Central 2',location =~ 'australiasoutheast','Australia Southeast',location =~ 'japanwest','Japan West',location =~ 'jioindiacentral','Jio India Central',location =~ 'koreasouth','Korea South',location =~ 'southindia','South India',location =~ 'westindia','West India',location =~ 'canadaeast','Canada East',location =~ 'francesouth','France South',location =~ 'germanynorth','Germany North',location =~ 'norwaywest','Norway West',location =~ 'switzerlandwest','Switzerland West',location =~ 'ukwest','UK West',location =~ 'uaecentral','UAE Central',location =~ 'brazilsoutheast','Brazil Southeast',location)
+| where (type !~ ('astronomer.astro/organizations'))
+| where (type !~ ('dell.storage/filesystems'))
+| where (type !~ ('informatica.datamanagement/organizations'))
+| where (type !~ ('paloaltonetworks.cloudngfw/globalrulestacks'))
+| where (type !~ ('solarwinds.observability/organizations'))
+| where (type !~ ('microsoft.azureactivedirectory/ciamdirectories'))
+| where (type !~ ('microsoft.agfoodplatform/farmbeats'))
+| where (type !~ ('microsoft.anybuild/clusters'))
+| where (type !~ ('microsoft.mobilepacketcore/mobilepacketcores/nfvis/clusters/amfdeployments'))
+| where (type !~ ('microsoft.mobilepacketcore/mobilepacketcores/amfprofiles'))
+| where (type !~ ('microsoft.mobilepacketcore/mobilepacketcores/nfvis/clusters'))
+| where (type !~ ('microsoft.mobilepacketcore/mobilepacketcores/configsnapshots'))
+| where (type !~ ('microsoft.mobilepacketcore/mobilepacketcores/datanetworks'))
+| where (type !~ ('microsoft.mobilepacketcore/mobilepacketcores/deploymentareas'))
+| where (type !~ ('microsoft.mobilepacketcore/mobilepacketcores/networkslices'))
+| where (type !~ ('microsoft.mobilepacketcore/mobilepacketcores/nfvis'))
+| where (type !~ ('microsoft.mobilepacketcore/mobilepacketcores/nfvis/clusters/nrfdeployments'))
+| where (type !~ ('microsoft.mobilepacketcore/mobilepacketcores/nrfprofiles'))
+| where (type !~ ('microsoft.mobilepacketcore/mobilepacketcores'))
+| where (type !~ ('microsoft.mobilepacketcore/mobilepacketcores/packetdetectionrules'))
+| where (type !~ ('microsoft.mobilepacketcore/mobilepacketcores/packetflowdescriptions'))
+| where (type !~ ('microsoft.mobilepacketcore/mobilepacketcores/pccrules'))
+| where (type !~ ('microsoft.mobilepacketcore/mobilepacketcores/pccrulebases'))
+| where (type !~ ('microsoft.mobilepacketcore/mobilepacketcores/plmns'))
+| where (type !~ ('microsoft.mobilepacketcore/mobilepacketcores/serviceareas'))
+| where (type !~ ('microsoft.mobilepacketcore/mobilepacketcores/nfvis/clusters/smfdeployments'))
+| where (type !~ ('microsoft.mobilepacketcore/mobilepacketcores/smfprofiles'))
+| where (type !~ ('microsoft.mobilepacketcore/mobilepacketcores/subscriberanalyzers'))
+| where (type !~ ('microsoft.mobilepacketcore/mobilepacketcores/serviceareas/trackingareas'))
+| where (type !~ ('microsoft.mobilepacketcore/mobilepacketcores/nfvis/clusters/upfdeployments'))
+| where (type !~ ('microsoft.mobilepacketcore/mobilepacketcores/upfprofiles'))
+| where (type !~ ('microsoft.mobilepacketcore/networkfunctions'))
+| where (type !~ ('microsoft.cdn/profiles/customdomains'))
+| where (type !~ ('microsoft.cdn/profiles/afdendpoints'))
+| where (type !~ ('microsoft.cdn/profiles/origingroups/origins'))
+| where (type !~ ('microsoft.cdn/profiles/origingroups'))
+| where (type !~ ('microsoft.cdn/profiles/afdendpoints/routes'))
+| where (type !~ ('microsoft.cdn/profiles/rulesets/rules'))
+| where (type !~ ('microsoft.cdn/profiles/rulesets'))
+| where (type !~ ('microsoft.cdn/profiles/secrets'))
+| where (type !~ ('microsoft.cdn/profiles/securitypolicies'))
+| where (type !~ ('microsoft.cloudtest/accounts'))
+| where (type !~ ('microsoft.cloudtest/hostedpools'))
+| where (type !~ ('microsoft.cloudtest/images'))
+| where (type !~ ('microsoft.cloudtest/pools'))
+| where (type !~ ('microsoft.codesigning/codesigningaccounts'))
+| where (type !~ ('microsoft.kubernetesconfiguration/extensions'))
+| where (type !~ ('microsoft.containerservice/managedclusters/microsoft.kubernetesconfiguration/extensions'))
+| where (type !~ ('microsoft.kubernetes/connectedclusters/microsoft.kubernetesconfiguration/namespaces'))
+| where (type !~ ('microsoft.containerservice/managedclusters/microsoft.kubernetesconfiguration/namespaces'))
+| where (type !~ ('microsoft.kubernetes/connectedclusters/microsoft.kubernetesconfiguration/fluxconfigurations'))
+| where (type !~ ('microsoft.containerservice/managedclusters/microsoft.kubernetesconfiguration/fluxconfigurations'))
+| where (type !~ ('microsoft.portalservices/extensions/deployments'))
+| where (type !~ ('microsoft.portalservices/extensions'))
+| where (type !~ ('microsoft.portalservices/extensions/slots'))
+| where (type !~ ('microsoft.portalservices/extensions/versions'))
+| where (type !~ ('microsoft.azuredatatransfer/connections'))
+| where (type !~ ('microsoft.azuredatatransfer/connections/flows'))
+| where (type !~ ('microsoft.azuredatatransfer/pipelines'))
+| where (type !~ ('microsoft.databasewatcher/watchers'))
+| where (type !~ ('microsoft.datacollaboration/workspaces'))
+| where (type !~ ('microsoft.deviceregistry/devices'))
+| where (type !~ ('microsoft.hdinsight/clusterpools/clusters'))
+| where (type !~ ('microsoft.hdinsight/clusterpools'))
+| where (type !~ ('microsoft.healthmodel/healthmodels'))
+| where (type !~ ('microsoft.hybridcompute/machinesesu'))
+| where (type !~ ('microsoft.network/virtualhubs')) or ((kind =~ ('routeserver')))
+| where (type !~ ('microsoft.metaverse/metaverses'))
+| where (type !~ ('microsoft.modsimworkbench/workbenches/chambers'))
+| where (type !~ ('microsoft.modsimworkbench/workbenches/chambers/connectors'))
+| where (type !~ ('microsoft.modsimworkbench/workbenches/chambers/files'))
+| where (type !~ ('microsoft.modsimworkbench/workbenches/chambers/filerequests'))
+| where (type !~ ('microsoft.modsimworkbench/workbenches/chambers/licenses'))
+| where (type !~ ('microsoft.modsimworkbench/workbenches/chambers/storages'))
+| where (type !~ ('microsoft.modsimworkbench/workbenches/chambers/workloads'))
+| where (type !~ ('microsoft.modsimworkbench/workbenches/sharedstorages'))
+| where (type !~ ('microsoft.modsimworkbench/workbenches'))
+| where (type !~ ('microsoft.insights/diagnosticsettings'))
+| where (type !~ ('microsoft.alertsmanagement/prometheusrulegroups'))
+| where not((type =~ ('microsoft.network/serviceendpointpolicies')) and ((kind =~ ('internal'))))
+| where (type !~ ('microsoft.openlogisticsplatform/workspaces'))
+| where (type !~ ('microsoft.scom/managedinstances'))
+| where (type !~ ('microsoft.orbital/edgesites'))
+| where (type !~ ('microsoft.orbital/groundstations'))
+| where (type !~ ('microsoft.orbital/l2connections'))
+| where (type !~ ('microsoft.recommendationsservice/accounts/modeling'))
+| where (type !~ ('microsoft.recommendationsservice/accounts/serviceendpoints'))
+| where (type !~ ('microsoft.recoveryservicesbvtd/vaults'))
+| where (type !~ ('microsoft.recoveryservicesbvtd2/vaults'))
+| where (type !~ ('microsoft.recoveryservicesintd/vaults'))
+| where (type !~ ('microsoft.recoveryservicesintd2/vaults'))
+| where (type !~ ('microsoft.deploymentmanager/rollouts'))
+| where (type !~ ('microsoft.datareplication/replicationvaults'))
+| where (type !~ ('microsoft.storage/storagetasks'))
+| where not((type =~ ('microsoft.synapse/workspaces/sqlpools')) and ((kind =~ ('v3'))))
+| where (type !~ ('microsoft.mission/catalogs'))
+| where (type !~ ('microsoft.mission/communities'))
+| where (type !~ ('microsoft.mission/virtualenclaves/endpoints'))
+| where (type !~ ('microsoft.mission/externalconnections'))
+| where (type !~ ('microsoft.mission/internalconnections'))
+| where (type !~ ('microsoft.mission/virtualenclaves'))
+| where (type !~ ('microsoft.mission/virtualenclaves/workloads'))
+| where (type !~ ('microsoft.windowspushnotificationservices/registrations'))
+| where (type !~ ('microsoft.manufacturingplatform/manufacturingdataservices'))
+| where not((type =~ ('microsoft.sql/servers/databases')) and ((kind in~ ('system','v2.0,system','v12.0,system','v12.0,system,serverless','v12.0,user,datawarehouse,gen2,analytics'))))
+| where not((type =~ ('microsoft.sql/servers')) and ((kind =~ ('v12.0,analytics'))))
+| project name,accountType,subscriptionDisplayName,size,owner,resourceGroup,locationDisplayName,diskState,provisioningState,osType,id,type,kind,location,subscriptionId,tags
+| sort by (tolower(tostring(name))) asc
