@@ -1,0 +1,9 @@
+resources
+| where type =~ 'Microsoft.Web/serverFarms'
+| where tags.Department has 'D&A'
+| where tags.Department !in~ ('D&A DATA MGMT OFFICE','D&A DAP PLATFORM GROUP','D&A DATA MGMT OFFICE')
+//| where isempty(managedBy)
+//| where isempty(tags.DatabricksEnvironment)
+| where resourceGroup notcontains 'dbr-managed'
+| extend version = extract('^.*v(.*)$', 1,tolower(sku.tier))
+| project subscriptionId, resourceGroup, name, type, version, sku.name, sku.tier, sku.capacity, sku.family, sku.size, tags.Application_Name,tags.Application_Id,tags.App,tags.Platform,tags.Platform_Service_Model,tags.App_Lifecycle_Stage,tags.Stage,tags.Department,tags.Admins_Group,tags.Users_Group,tags.Owned_by,tags.Owner_Notification_Group,tags.Owned_By,tags.Technical_Notification_Group,tags.Supported_By,tags.Operations_Team,tags.Development_Team,tags.Platform_Owner,tags.WBS_Element,tags.Cost_Center
