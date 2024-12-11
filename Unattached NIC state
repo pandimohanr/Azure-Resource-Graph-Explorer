@@ -3,3 +3,14 @@ Resources
 | where "{nicWithPrivateEndpoints}" !has id 
 | where properties !has 'virtualmachine' 
 | project id, resourceGroup, location, subscriptionId
+
+or
+
+Resources
+| where type has "microsoft.network/networkinterfaces"
+| where isnull(properties.privateEndpoint)
+| where isnull(properties.privateLinkService)
+| where properties.hostedWorkloads == "[]"
+| where properties !has 'virtualmachine'
+| extend Details = pack_all()
+| project subscriptionId, Resource=id, resourceGroup, location, kind, tags, Details
