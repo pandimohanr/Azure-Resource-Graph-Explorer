@@ -1,0 +1,13 @@
+resources
+| where type =~ "microsoft.network/virtualnetworks"
+| where tags.Department has 'D&A'
+| where tags.Department !in~ ('D&A DATA MGMT OFFICE','D&A DAP PLATFORM GROUP','D&A DATA MGMT OFFICE')
+| extend subnet = properties.subnets
+| mv-expand subnet
+| extend ipConfigurations = subnet.properties.ipConfigurations
+| extend delegations = subnet.properties.delegations
+| extend applicationGatewayIPConfigurations = subnet.properties.applicationGatewayIPConfigurations
+| where isnull(ipConfigurations) and delegations == "[]" and isnull(applicationGatewayIPConfigurations) 
+| extend SubnetName = subnet.name, SubnetId = subnet.id
+| extend Details = pack_all()
+| project subscriptionId, SubnetName, vNetId=id, SubnetId ,resourceGroup, location, vNetName=name, Details
