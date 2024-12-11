@@ -1,9 +1,0 @@
-Resources
-| where type has "microsoft.compute/disks"
-| where tags.Department has 'D&A'
-| where tags.Department !in~ ('D&A DATA MGMT OFFICE','D&A DAP PLATFORM GROUP','D&A DATA MGMT OFFICE')
-| extend diskState = tostring(properties.diskState)
-| where managedBy == "" or diskState == 'Unattached'
-| where not(name endswith "-ASRReplica" or name startswith "ms-asr-" or name startswith "asrseeddisk-")
-| extend Details = pack_all()
-| project name,subscriptionId, Resource=id, resourceGroup, location, diskType=sku.name, diskSizeGB=properties.diskSizeGB, timeCreated=properties.timeCreated, tags, Details
