@@ -2,3 +2,16 @@ Resources
 | where type =~ 'microsoft.network/networksecuritygroups' and isnull(properties.networkInterfaces) and isnull(properties.subnets)
 | project name, resourceGroup
 | sort by name asc
+
+or
+
+// Run query to see results.
+resources
+| where type =~ 'microsoft.network/networksecuritygroups' and isnull(properties.networkInterfaces) and isnull(properties.subnets)
+| where tags.Department has 'D&A'
+| where tags.Department !in~ ('D&A DATA MGMT OFFICE','D&A DAP PLATFORM GROUP','D&A DATA MGMT OFFICE')
+| extend Details = pack_all()
+| where not((type =~ ('microsoft.sql/servers/databases')) and ((kind in~ ('system','v2.0,system','v12.0,system','v12.0,system,serverless','v12.0,user,datawarehouse,gen2,analytics'))))
+| where not((type =~ ('microsoft.sql/servers')) and ((kind =~ ('v12.0,analytics'))))
+| project name,resourceGroup,location,subscriptionId,id,type,kind,tags
+| sort by (tolower(tostring(name))) asc
