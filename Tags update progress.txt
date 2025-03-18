@@ -1,0 +1,10 @@
+resourcecontainers
+| where tags.Application_Id in~ ('CB7DCE9A5C481A06')
+| where tags.Owned_By in~ ('kowalik.m.2@pg.com','luczyszyn.k@pg.com')
+| project subscriptionId, resourceGroup, type, name, tags.Application_Name, tags.Application_Id, tags.WBS_Element, tags.Cost_Center, tags.Owned_By
+| union ( resources
+| where tags.Application_Id in~ ('CB7DCE9A5C481A06')
+| where tags.Owned_By in~ ('kowalik.m.2@pg.com','luczyszyn.k@pg.com')
+| project subscriptionId, resourceGroup, type, name, tags.Application_Name, tags.Application_Id, tags.WBS_Element, tags.Cost_Center, tags.Owned_By
+)
+| order by resourceGroup
