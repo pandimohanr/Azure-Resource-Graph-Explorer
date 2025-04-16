@@ -1,0 +1,13 @@
+resources
+| where type == "microsoft.sql/servers/databases"
+| project name, resourceGroup, subscriptionId, properties.status, properties.collation, properties.maxSizeBytes, properties.edition, properties.elasticPoolName, properties.creationDate,kind,id,type,location,tags.Application_Name,tags.Owned_By,tags.Supported_By,tags.Operations_Team,tags.Development_Team
+| order by name asc
+
+or 
+For particular tags use below one
+resources
+| where type == "microsoft.sql/servers/databases"
+| where tags.Department has 'D&A'
+| where tags.Department !in~ ('D&A DATA MGMT OFFICE','D&A DAP PLATFORM GROUP','D&A DATA MGMT OFFICE')
+| project name, resourceGroup, subscriptionId, properties.status, properties.collation, properties.maxSizeBytes, properties.edition, properties.elasticPoolName, properties.creationDate,kind,id,type,location,tags.Application_Name,tags.Owned_By,tags.Supported_By,tags.Operations_Team,tags.Development_Team
+| order by name asc
